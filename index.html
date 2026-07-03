@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💪 Workout Plan & Log</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#0F1117;--surface:#1A1D27;--surface2:#22263A;--border:#2E3350;
+    --accent:#4F8EF7;--green:#2DD4A0;--yellow:#F5C842;--red:#F76F6F;--orange:#F79A4F;--purple:#A78BFA;
+    --text:#F0F2FF;--text2:#8B90B0;--text3:#555A7A;
+  }
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+  .header{background:linear-gradient(135deg,#1A1D27,#22263A);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:100;}
+  .header-title{font-size:17px;font-weight:700;}.header-title span{color:var(--accent);}
+  .header-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+  .nav{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;}
+  .nav-btn{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:none;white-space:nowrap;background:transparent;color:var(--text2);transition:all 0.15s;}
+  .nav-btn.active{background:var(--accent);color:white;}
+  .content{padding:14px 16px;max-width:700px;margin:0 auto;}
+  .panel{display:none;}.panel.show{display:block;}
+
+  /* デイカード */
+  .day-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;}
+  .day-header{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .day-badge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .day-title{font-size:14px;font-weight:600;flex:1;}
+  .day-sub{font-size:11px;color:var(--text2);margin-top:1px;}
+  .day-chevron{color:var(--text2);font-size:14px;transition:transform 0.2s;}
+  .day-body{display:none;padding:8px 0;}
+  .day-body.open{display:block;}
+
+  /* エクササイズ行 */
+  .ex-row{padding:10px 14px;border-bottom:1px solid var(--border);}
+  .ex-row:last-child{border-bottom:none;}
+  .ex-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .ex-num{font-size:11px;font-weight:700;color:var(--text2);min-width:18px;}
+  .ex-name{font-size:13px;font-weight:600;color:var(--text);flex:1;}
+  .ex-target{font-size:11px;color:var(--text2);white-space:nowrap;}
+  .ex-tip{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.4;padding-left:26px;}
+  .tag{display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:10px;margin-left:3px;}
+  .tag-machine{background:#4F8EF722;color:var(--accent);}
+  .tag-free{background:#F5C84222;color:var(--yellow);}
+  .tag-smith{background:#A78BFA22;color:var(--purple);}
+  .tag-compound{background:#2DD4A022;color:var(--green);}
+
+  /* ログエリア */
+  .log-area{padding-left:26px;}
+  .log-sets{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+  .log-set-row{display:grid;grid-template-columns:40px 1fr 1fr auto;gap:6px;align-items:center;}
+  .set-label{font-size:11px;color:var(--text2);font-weight:600;}
+  .log-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:13px;width:100%;outline:none;text-align:center;}
+  .log-input:focus{border-color:var(--accent);}
+  .log-input::placeholder{color:var(--text3);}
+  .del-btn{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 4px;}
+  .del-btn:hover{color:var(--red);}
+  .add-set-btn{background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:11px;cursor:pointer;width:100%;text-align:center;transition:all 0.15s;}
+  .add-set-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .save-ex-btn{background:var(--accent);border:none;border-radius:8px;padding:7px 14px;color:white;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;}
+  .save-ex-btn:hover{opacity:0.85;}
+  .saved-indicator{font-size:11px;color:var(--green);margin-top:4px;text-align:center;display:none;}
+
+  /* ログ履歴 */
+  .log-history{margin-top:6px;}
+  .history-item{background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:5px;}
+  .history-date{font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:600;}
+  .history-sets{display:flex;flex-wrap:wrap;gap:4px;}
+  .history-set{font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text);}
+
+  /* ログパネル */
+  .log-panel-content{padding:0;}
+  .log-date-group{margin-bottom:16px;}
+  .log-date-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+  .log-entry-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;}
+  .log-entry-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
+  .log-entry-sets{display:flex;flex-wrap:wrap;gap:5px;}
+  .log-entry-set{font-size:11px;background:var(--surface2);border-radius:6px;padding:3px 8px;color:var(--accent);}
+  .empty-log{text-align:center;padding:40px 20px;color:var(--text2);font-size:13px;}
+
+  /* 原則パネル */
+  .principle-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .p-val{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+  .p-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;}
+  .p-body{font-size:11px;color:var(--text2);line-height:1.5;}
+  .tip-box{background:#2DD4A015;border:1px solid #2DD4A040;border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px;}
+  .warning-box{background:#F76F6F15;border:1px solid #F76F6F40;border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px;}
+  .sec{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;}
+  .prog-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;}
+  .prog-week{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px;}
+  .prog-desc{font-size:12px;color:var(--text);line-height:1.5;}
+  .prog-focus{font-size:11px;color:var(--text2);margin-top:3px;}
+
+  .rest-info{font-size:10px;color:var(--text3);margin-left:4px;}
+  .clear-btn{background:transparent;border:1px solid var(--red);border-radius:8px;padding:6px 12px;color:var(--red);font-size:11px;cursor:pointer;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-title">💪 <span>Bulk Up</span> Workout</div>
+  <div class="header-sub">アッパーロワー分割 週4日 / ログ記録機能付き</div>
+</div>
+<div class="nav">
+  <button class="nav-btn active" onclick="showPanel('schedule')">📅 メニュー</button>
+  <button class="nav-btn" onclick="showPanel('log')">📊 ログ履歴</button>
+  <button class="nav-btn" onclick="showPanel('principle')">📖 原則</button>
+  <button class="nav-btn" onclick="showPanel('progression')">📈 4週間</button>
+</div>
+<div class="content">
+
+  <!-- メニュー -->
+  <div class="panel show" id="panel-schedule">
+    <div id="dayCards"></div>
+  </div>
+
+  <!-- ログ履歴 -->
+  <div class="panel" id="panel-log">
+    <div class="sec">トレーニング履歴</div>
+    <div id="logHistory"></div>
+  </div>
+
+  <!-- 原則 -->
+  <div class="panel" id="panel-principle">
+    <div class="sec">バルクアップの3大原則</div>
+    <div class="principle-card"><div class="p-val">漸進性</div><div class="p-title">毎週少しずつ重量を上げる</div><div class="p-body">同じ重量を続けても筋肉は成長しない。週ごとに2.5〜5lb増やすのが目標。</div></div>
+    <div class="principle-card"><div class="p-val">過負荷</div><div class="p-title">限界の1〜2回手前まで追い込む</div><div class="p-body">「まだ3回できる」状態は追い込み不足。最後の2〜3回がきついくらいが理想。</div></div>
+    <div class="principle-card"><div class="p-val">回復</div><div class="p-title">休息日は絶対に守る</div><div class="p-body">筋肉はトレーニング中ではなく休息中に成長する。睡眠7〜8時間が必須。</div></div>
+    <div class="sec">スミスマシン・懸垂について</div>
+    <div class="tip-box">💡 <strong>スミスの強み</strong><br>軌道が固定されているのでバランスを気にせず重量に集中できる。一人でも高重量を扱いやすい。</div>
+    <div class="tip-box">💡 <strong>懸垂が増えない場合</strong><br>アシストマシンで-10〜20lbの補助を入れながら毎週少しずつ補助を減らす。2ヶ月で補助なし8回以上が目標。</div>
+    <div class="warning-box">⚠️ <strong>ウォームアップは必ず行う</strong><br>各セッション前に5分の軽いカーディオ＋軽重量での1〜2セット。</div>
+    <div class="warning-box">⚠️ <strong>痛みと疲労感は別物</strong><br>筋肉の「きつい感覚」はOK。関節や腱の「鋭い痛み」はすぐ中止。</div>
+  </div>
+
+  <!-- 4週間 -->
+  <div class="panel" id="panel-progression">
+    <div class="sec">4週間プログレッション</div>
+    <div class="prog-card"><div class="prog-week">第1週 — フォーム習得週</div><div class="prog-desc">全種目を軽めの重量（本来の70〜80%）で行う。スミスのフォームと懸垂の感覚を掴む。</div><div class="prog-focus">🎯 懸垂は回数より正しいフォームを優先。アシスト多めでOK。</div></div>
+    <div class="prog-card"><div class="prog-week">第2週 — 重量確定週</div><div class="prog-desc">各種目で「10回ギリギリ」な重量を見つけて記録。懸垂は今の最大回数を把握する。</div><div class="prog-focus">🎯 重量をログに記録しておく。懸垂の現在回数も記録。</div></div>
+    <div class="prog-card"><div class="prog-week">第3週 — 追い込み週</div><div class="prog-desc">基準重量で限界まで追い込む。懸垂はアシストを少し減らして挑戦。</div><div class="prog-focus">🎯 スミスのベンチは2.5〜5lb増やしてみる。</div></div>
+    <div class="prog-card"><div class="prog-week">第4週 — デロード週（回復週）</div><div class="prog-desc">重量を20〜30%下げて同じメニュー。懸垂もアシスト多めで回数を稼ぐ。</div><div class="prog-focus">🎯 関節・腱を回復させる。サボりではなく戦略。</div></div>
+    <div class="sec">懸垂の目標ロードマップ</div>
+    <div class="prog-card"><div class="prog-week">1ヶ月後</div><div class="prog-desc">補助なし5〜8回×4セット安定</div></div>
+    <div class="prog-card"><div class="prog-week">2ヶ月後</div><div class="prog-desc">補助なし8〜12回×4セット。加重懸垂への移行を検討。</div></div>
+    <div class="tip-box" style="margin-top:8px;">💡 2ヶ月後にバーベルスクワット・デッドリフトへの移行も検討。</div>
+  </div>
+
+</div>
+
+<script>
+const DAYS = [
+  {
+    key:'mon', label:'月曜', color:'#4F8EF7', bg:'#4F8EF720',
+    title:'上半身A — 胸・肩・三頭筋', sub:'プッシュ系 / 約60〜70分',
+    exercises:[
+      {id:'mon_1', name:'スミスマシン ベンチプレス', tags:['スミス','複合'], target:'4×8〜10回', rest:'2分', tip:'バーを乳頭の高さに。肩甲骨を寄せて胸を張る。バーをみぞおちに向けて下ろす。'},
+      {id:'mon_2', name:'スミスマシン インクラインプレス', tags:['スミス','複合'], target:'3×10〜12回', rest:'90秒', tip:'30〜45度の傾斜。鎖骨の下あたりに下ろす。上部胸を意識して押す。'},
+      {id:'mon_3', name:'ダンベルフライ', tags:['フリー'], target:'3×12〜15回', rest:'60秒', tip:'肘を少し曲げたまま大きく開く。胸を伸ばして収縮させる。重量は軽め。'},
+      {id:'mon_4', name:'ショルダープレスマシン', tags:['マシン','複合'], target:'4×10回', rest:'90秒', tip:'背もたれにしっかり背中をつける。首をすくめない。真上に押す。'},
+      {id:'mon_5', name:'サイドレイズ（ダンベル）', tags:['フリー'], target:'3×15回', rest:'60秒', tip:'軽めで正確に。肘を少し曲げて真横に上げる。肩より上に上げない。'},
+      {id:'mon_6', name:'トライセプスプッシュダウン', tags:['マシン'], target:'3×12回', rest:'60秒', tip:'肘を体の横に固定したまま押し下げる。体を前傾させない。'},
+    ]
+  },
+  {
+    key:'tue', label:'火曜', color:'#2DD4A0', bg:'#2DD4A020',
+    title:'下半身A — 大腿四頭筋・臀部・腹筋', sub:'約60〜70分',
+    exercises:[
+      {id:'tue_1', name:'レッグプレス', tags:['マシン','複合'], target:'4×10回', rest:'2分', tip:'足幅は肩幅。膝がつま先より前に出ないように。深く曲げすぎない（90度まで）。'},
+      {id:'tue_2', name:'レッグエクステンション', tags:['マシン'], target:'3×15回', rest:'60秒', tip:'大腿四頭筋の仕上げ。ゆっくり下ろして筋肉に効かせる。'},
+      {id:'tue_3', name:'ヒップスラスト', tags:['マシン','複合'], target:'4×12回', rest:'90秒', tip:'臀部のメイン種目。腰を反らさず骨盤を前傾させる。トップで1秒止める。'},
+      {id:'tue_4', name:'ルーマニアンデッドリフト（ダンベル）', tags:['フリー','複合'], target:'3×12回', rest:'90秒', tip:'背中をまっすぐ保ち、お尻を後ろに引く。軽めから。'},
+      {id:'tue_5', name:'カーフレイズ', tags:['マシン'], target:'4×15回', rest:'60秒', tip:'ふくらはぎをしっかり伸ばしてから上げる。スローテンポで。'},
+      {id:'tue_6', name:'クランチ / アブマシン', tags:['マシン'], target:'3×20回', rest:'60秒', tip:'背中を丸めて腹筋を縮める意識。勢いを使わない。'},
+    ]
+  },
+  {
+    key:'wed', label:'水曜', color:'#555A7A', bg:'#2E335040',
+    title:'完全休息日', sub:'軽いウォーキングはOK。ストレッチ推奨。',
+    exercises:[], rest:true
+  },
+  {
+    key:'thu', label:'木曜', color:'#A78BFA', bg:'#A78BFA20',
+    title:'上半身B — 背中・二頭筋', sub:'プル系 / 約65〜75分',
+    exercises:[
+      {id:'thu_1', name:'懸垂（プルアップ / チンアップ）', tags:['フリー','複合'], target:'4×限界回数', rest:'2分', tip:'できる回数×4セット。できない日はアシストマシン。手幅は肩幅より少し広め。'},
+      {id:'thu_2', name:'ラットプルダウン', tags:['マシン','複合'], target:'3×10〜12回', rest:'90秒', tip:'懸垂後の追い込み用。広背筋を意識して鎖骨に向けて引く。'},
+      {id:'thu_3', name:'シーテッドロウ（ケーブル）', tags:['マシン','複合'], target:'3×10回', rest:'90秒', tip:'背筋を伸ばしてお腹に引く。肩甲骨を寄せる意識。'},
+      {id:'thu_4', name:'ダンベルワンアームロウ', tags:['フリー'], target:'3×12回', rest:'60秒', tip:'片手ずつ。ベンチに手と膝をついて安定させる。肘を天井に向けて引く。'},
+      {id:'thu_5', name:'フェイスプル（ケーブル）', tags:['マシン'], target:'3×15回', rest:'60秒', tip:'肩のインナーマッスル強化。顔に向かって引く。肩の怪我予防に必須。'},
+      {id:'thu_6', name:'バーベルカール', tags:['フリー'], target:'3×12回', rest:'60秒', tip:'肘を固定して前腕だけ動かす。体を反らして勢いを使わない。'},
+      {id:'thu_7', name:'ハンマーカール（ダンベル）', tags:['フリー'], target:'3×12回', rest:'60秒', tip:'親指を上にして握る。上腕筋・腕橈骨筋も同時に鍛えられる。'},
+    ]
+  },
+  {
+    key:'fri', label:'金曜', color:'#F79A4F', bg:'#F79A4F20',
+    title:'下半身B — ハムストリング・臀部・腹筋', sub:'約60〜70分',
+    exercises:[
+      {id:'fri_1', name:'レッグカール（ライイング）', tags:['マシン'], target:'4×12回', rest:'90秒', tip:'ハムストリングのメイン種目。腰が浮かないように。ゆっくり戻す。'},
+      {id:'fri_2', name:'ゴブレットスクワット（ダンベル）', tags:['フリー','複合'], target:'4×12回', rest:'90秒', tip:'ダンベルを胸の前で持つ。膝をつま先方向に向ける。'},
+      {id:'fri_3', name:'ヒップアブダクション', tags:['マシン'], target:'3×15回', rest:'60秒', tip:'臀部外側を鍛える。膝が内側に入りやすい人に特に有効。'},
+      {id:'fri_4', name:'シングルレッグプレス', tags:['マシン'], target:'3×10回', rest:'90秒', tip:'左右のアンバランスを修正。弱い方の脚を優先して鍛える。'},
+      {id:'fri_5', name:'カーフレイズ', tags:['マシン'], target:'4×15回', rest:'60秒', tip:'火曜と同様。週2回鍛えてふくらはぎを発達させる。'},
+      {id:'fri_6', name:'プランク', tags:['フリー'], target:'3×45秒', rest:'60秒', tip:'体を一直線に保つ。腰が落ちたら終了。'},
+    ]
+  },
+  {
+    key:'sat', label:'土・日', color:'#555A7A', bg:'#2E335040',
+    title:'完全休息日', sub:'ストレッチ・散歩・食事仕込みの日に活用。',
+    exercises:[], rest:true
+  },
+];
+
+const TAG_STYLES = {
+  'マシン':'tag-machine','フリー':'tag-free','スミス':'tag-smith','複合':'tag-compound'
+};
+
+let logs = {};
+
+function loadLogs(){
+  try{ logs = JSON.parse(localStorage.getItem('workout_logs') || '{}'); }
+  catch(e){ logs = {}; }
+}
+
+function saveLogs(){
+  try{ localStorage.setItem('workout_logs', JSON.stringify(logs)); }
+  catch(e){}
+}
+
+function getToday(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getLogKey(exId){ return `${getToday()}_${exId}`; }
+
+function buildSchedule(){
+  const container = document.getElementById('dayCards');
+  DAYS.forEach(day => {
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    card.style.opacity = day.rest ? '0.6' : '1';
+
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    header.innerHTML = `
+      <div class="day-badge" style="background:${day.bg};color:${day.color};">${day.label}</div>
+      <div style="flex:1;">
+        <div class="day-title">${day.title}</div>
+        <div class="day-sub">${day.sub}</div>
+      </div>
+      ${!day.rest ? '<div class="day-chevron">▼</div>' : ''}
+    `;
+
+    const body = document.createElement('div');
+    body.className = 'day-body';
+
+    if(!day.rest){
+      header.addEventListener('click', () => {
+        const isOpen = body.classList.toggle('open');
+        header.querySelector('.day-chevron').style.transform = isOpen ? 'rotate(180deg)' : '';
+      });
+
+      day.exercises.forEach((ex, idx) => {
+        const row = document.createElement('div');
+        row.className = 'ex-row';
+        row.innerHTML = `
+          <div class="ex-header">
+            <div class="ex-num">${idx+1}</div>
+            <div class="ex-name">${ex.name}${ex.tags.map(t=>`<span class="tag ${TAG_STYLES[t]||''}">${t}</span>`).join('')}</div>
+            <div class="ex-target">${ex.target}<span class="rest-info">休${ex.rest}</span></div>
+          </div>
+          <div class="ex-tip">${ex.tip}</div>
+          <div class="log-area">
+            <div class="log-sets" id="sets_${ex.id}"></div>
+            <button class="add-set-btn" onclick="addSet('${ex.id}')">+ セット追加</button>
+            <button class="save-ex-btn" onclick="saveExercise('${ex.id}', '${ex.name}')">💾 保存</button>
+            <div class="saved-indicator" id="saved_${ex.id}">✅ 保存しました！</div>
+            <div class="log-history" id="history_${ex.id}"></div>
+          </div>
+        `;
+        body.appendChild(row);
+        renderHistory(ex.id);
+      });
+    }
+
+    card.appendChild(header);
+    card.appendChild(body);
+    container.appendChild(card);
+  });
+
+  // 今日の曜日に対応するカードを自動で開く
+  const todayIdx = [0,1,2,3,4,5,6][ new Date().getDay() ];
+  const dayMap = {1:0, 2:1, 3:2, 4:3, 5:4, 0:5, 6:5};
+  const openIdx = dayMap[new Date().getDay()];
+  const bodies = document.querySelectorAll('.day-body');
+  const chevrons = document.querySelectorAll('.day-chevron');
+  if(bodies[openIdx] && !DAYS[openIdx].rest){
+    bodies[openIdx].classList.add('open');
+    if(chevrons[openIdx]) chevrons[openIdx].style.transform = 'rotate(180deg)';
+  }
+}
+
+function addSet(exId){
+  const container = document.getElementById(`sets_${exId}`);
+  const setNum = container.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'log-set-row';
+  row.innerHTML = `
+    <div class="set-label">Set ${setNum}</div>
+    <input class="log-input" type="number" placeholder="lbs" min="0" step="2.5" inputmode="decimal">
+    <input class="log-input" type="number" placeholder="回数" min="0" step="1" inputmode="numeric">
+    <button class="del-btn" onclick="this.parentElement.remove(); renumberSets('${exId}')">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function renumberSets(exId){
+  const rows = document.querySelectorAll(`#sets_${exId} .log-set-row`);
+  rows.forEach((row, i) => {
+    row.querySelector('.set-label').textContent = `Set ${i+1}`;
+  });
+}
+
+function saveExercise(exId, exName){
+  const rows = document.querySelectorAll(`#sets_${exId} .log-set-row`);
+  const sets = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('.log-input');
+    const lbs = inputs[0].value;
+    const reps = inputs[1].value;
+    if(lbs || reps) sets.push({lbs: lbs||'—', reps: reps||'—'});
+  });
+  if(sets.length === 0) return;
+
+  const today = getToday();
+  if(!logs[today]) logs[today] = {};
+  logs[today][exId] = {name: exName, sets, savedAt: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})};
+  saveLogs();
+
+  const indicator = document.getElementById(`saved_${exId}`);
+  indicator.style.display = 'block';
+  setTimeout(() => indicator.style.display = 'none', 2000);
+  renderHistory(exId);
+  renderLogHistory();
+}
+
+function renderHistory(exId){
+  const container = document.getElementById(`history_${exId}`);
+  if(!container) return;
+  container.innerHTML = '';
+
+  const entries = [];
+  Object.keys(logs).sort().reverse().slice(0,3).forEach(date => {
+    if(logs[date][exId]){
+      entries.push({date, ...logs[date][exId]});
+    }
+  });
+
+  if(entries.length === 0) return;
+
+  entries.forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const setsHtml = entry.sets.map((s,i) => `<span class="history-set">Set${i+1}: ${s.lbs}lbs × ${s.reps}回</span>`).join('');
+    item.innerHTML = `<div class="history-date">${entry.date}</div><div class="history-sets">${setsHtml}</div>`;
+    container.appendChild(item);
+  });
+}
+
+function renderLogHistory(){
+  const container = document.getElementById('logHistory');
+  container.innerHTML = '';
+
+  const dates = Object.keys(logs).sort().reverse();
+  if(dates.length === 0){
+    container.innerHTML = '<div class="empty-log">まだログがありません。<br>メニュータブからトレーニングを記録してください。</div>';
+    return;
+  }
+
+  dates.forEach(date => {
+    const group = document.createElement('div');
+    group.className = 'log-date-group';
+    const d = new Date(date);
+    const dayNames = ['日','月','火','水','木','金','土'];
+    group.innerHTML = `<div class="log-date-label">${date}（${dayNames[d.getDay()]}）</div>`;
+
+    Object.values(logs[date]).forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'log-entry-card';
+      const setsHtml = entry.sets.map((s,i) => `<span class="log-entry-set">Set${i+1}: ${s.lbs}lbs × ${s.reps}回</span>`).join('');
+      card.innerHTML = `<div class="log-entry-name">${entry.name}</div><div class="log-entry-sets">${setsHtml}</div>`;
+      group.appendChild(card);
+    });
+
+    container.appendChild(group);
+  });
+
+  // ログ削除ボタン
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'clear-btn';
+  clearBtn.textContent = '🗑 全ログを削除';
+  clearBtn.onclick = () => {
+    if(confirm('全てのログを削除しますか？')){
+      logs = {};
+      saveLogs();
+      renderLogHistory();
+      document.querySelectorAll('.log-history').forEach(el => el.innerHTML = '');
+    }
+  };
+  container.appendChild(clearBtn);
+}
+
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('show');
+  const idx = {schedule:0, log:1, principle:2, progression:3}[name];
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if(name === 'log') renderLogHistory();
+}
+
+loadLogs();
+buildSchedule();
+</script>
+</body>
+</html>
